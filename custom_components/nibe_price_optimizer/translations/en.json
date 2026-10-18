@@ -1,0 +1,169 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nibe Price Optimizer",
+        "description": "Requires the Nibe Heat Pump (Modbus) integration and a Nord Pool price sensor with raw_today/raw_tomorrow (HACS Nordpool). Nothing is written to the pump during the trial.",
+        "data": {
+          "nibe_entry": "Nibe heat pump",
+          "price_sensor": "Nord Pool price sensor",
+          "grid_fee": "Grid fee and other costs per kWh (on top of the spot price)",
+          "trial_days": "Trial period (days)"
+        },
+        "data_description": {
+          "grid_fee": "Everything you pay per kWh on top of the spot price in the price sensor: grid transfer fee, energy tax, supplier markup – incl. VAT if the price sensor includes VAT.",
+          "trial_days": "History from the recorder is imported first, so the trial may finish sooner."
+        }
+      },
+      "entities": {
+        "title": "Heat pump entities",
+        "description": "Found {found} of {total} entities automatically by Modbus register. Check them and fill in any missing ones.",
+        "data": {
+          "bt6": "BT6 hot water charging",
+          "bt7": "BT7 hot water top",
+          "bt1": "BT1 outdoor",
+          "bt50": "BT50 room average",
+          "hw_mode": "Hot water demand mode (40057)",
+          "offset": "Heating offset climate system 1 (40031)",
+          "spa": "Smart price adaption (40844)",
+          "hw_start_low": "HW start temp low/SMALL (40061)",
+          "hw_stop_low": "HW stop temp low/SMALL (40065)",
+          "hw_start_normal": "HW start temp normal/MEDIUM (40060)",
+          "hw_stop_normal": "HW stop temp normal/MEDIUM (40064)",
+          "hw_start_high": "HW start temp high/LARGE (40059)",
+          "hw_stop_high": "HW stop temp high/LARGE (40063)",
+          "e_heat_prod": "Energy log: produced for heating past hour (32284)",
+          "e_hw_prod": "Energy log: produced for hot water past hour (32286)",
+          "e_heat_used": "Energy log: used for heating past hour (32292)",
+          "e_hw_used": "Energy log: used for hot water past hour (32294)",
+          "e_heat_add": "Energy log: add. heater heating past hour (32300)",
+          "e_hw_add": "Energy log: add. heater hot water past hour (32302)"
+        }
+      }
+    },
+    "error": {
+      "price_no_raw": "The sensor has no raw_today attribute – use the HACS Nordpool integration.",
+      "missing_required": "BT6, BT1, hot water mode and the hot water energy log are required."
+    },
+    "abort": {
+      "no_nibe": "No Nibe Heat Pump integration found.",
+      "already_configured": "This heat pump is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Settings",
+        "data": {
+          "grid_fee": "Grid fee and other costs per kWh",
+          "trial_days": "Trial period (days)",
+          "publish_hour": "Hour when tomorrow's prices are published",
+          "base_offset": "Base heating offset",
+          "max_indoor_dev": "Max indoor deviation (± °C)",
+          "indoor_sensor": "Indoor temperature sensor (optional, otherwise BT50)",
+          "indoor_target": "Normal indoor temperature (°C)",
+          "disable_spa": "Turn off Nibe Smart Price Adaption while heating control is active"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "trial": {
+        "name": "Trial period",
+        "state": {
+          "running": "Running",
+          "complete": "Complete"
+        }
+      },
+      "hw_decision": {
+        "name": "Hot water decision"
+      },
+      "heat_decision": {
+        "name": "Heating offset decision"
+      },
+      "hw_recommendation": {
+        "name": "Hot water recommendation"
+      },
+      "heat_recommendation": {
+        "name": "Heating recommendation"
+      },
+      "hot_water_cop": {
+        "name": "Hot water COP"
+      },
+      "heating_cop": {
+        "name": "Heating COP"
+      }
+    },
+    "select": {
+      "hw_strategy": {
+        "name": "Hot water strategy",
+        "state": {
+          "hw_fixed_medium": "Always MEDIUM",
+          "hw_fixed_small": "Always SMALL",
+          "hw_fixed_large": "Always LARGE",
+          "hw_quartile_50": "Price quartiles (LARGE ≤ p25, spread ≥ 0.50)",
+          "hw_absolute_50": "LARGE only ≤ 0.50 spot",
+          "hw_forecast_50": "Forecast LARGE (≥ 0.50 saved)",
+          "hw_forecast_70": "Forecast LARGE (≥ 0.70 saved)",
+          "hw_forecast_100": "Forecast LARGE (≥ 1.00 saved)",
+          "hw_forecast_70_nosmall": "Forecast LARGE (≥ 0.70 saved), no SMALL",
+          "hw_forecast_70_later": "Forecast LARGE (≥ 0.70 saved), vs avoided charge",
+          "hw_forecast_30": "Forecast LARGE (≥ 0.30 saved)",
+          "hw_forecast_40": "Forecast LARGE (≥ 0.40 saved)",
+          "hw_forecast_60": "Forecast LARGE (≥ 0.60 saved)",
+          "hw_forecast_80": "Forecast LARGE (≥ 0.80 saved)",
+          "hw_forecast_120": "Forecast LARGE (≥ 1.20 saved)",
+          "hw_forecast_150": "Forecast LARGE (≥ 1.50 saved)",
+          "hw_forecast_50_later": "Forecast LARGE (≥ 0.50 saved), vs avoided charge",
+          "hw_forecast_100_later": "Forecast LARGE (≥ 1.00 saved), vs avoided charge",
+          "hw_absolute_30": "LARGE only ≤ 0.30 spot",
+          "hw_absolute_70": "LARGE only ≤ 0.70 spot",
+          "hw_quartile_30": "Price quartiles (LARGE ≤ p25, spread ≥ 0.30)"
+        }
+      },
+      "heat_strategy": {
+        "name": "Heating strategy",
+        "state": {
+          "heat_none": "No price control (base offset)",
+          "heat_price_1": "Price shifting ±1",
+          "heat_price_2": "Price shifting ±2",
+          "heat_price_3": "Price shifting ±3"
+        }
+      }
+    },
+    "switch": {
+      "hw_active": {
+        "name": "Hot water control active"
+      },
+      "heat_active": {
+        "name": "Heating control active"
+      }
+    },
+    "button": {
+      "generate_report": {
+        "name": "Generate report"
+      },
+      "apply_recommendation": {
+        "name": "Apply recommendation"
+      },
+      "restart_trial": {
+        "name": "Restart trial"
+      }
+    }
+  },
+  "services": {
+    "generate_report": {
+      "name": "Generate report",
+      "description": "Evaluates all strategies and writes a Markdown report to /config/nibe_price_optimizer/."
+    },
+    "apply_recommendation": {
+      "name": "Apply recommendation",
+      "description": "Selects the recommended strategies (does not turn on active control)."
+    },
+    "restart_trial": {
+      "name": "Restart trial",
+      "description": "Clears collected data and starts a new trial."
+    }
+  }
+}

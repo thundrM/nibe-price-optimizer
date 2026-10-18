@@ -1,0 +1,169 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Nibe Price Optimizer",
+        "description": "Kräver integrationen Nibe Heat Pump (Modbus) och en Nord Pool-prissensor med raw_today/raw_tomorrow (HACS Nordpool). Under provperioden skrivs ingenting till pumpen.",
+        "data": {
+          "nibe_entry": "Nibe-värmepump",
+          "price_sensor": "Nord Pool-prissensor",
+          "grid_fee": "Nätavgift och övriga kostnader per kWh (utöver spotpriset)",
+          "trial_days": "Provperiod (dagar)"
+        },
+        "data_description": {
+          "grid_fee": "Allt du betalar per kWh utöver spotpriset i prissensorn: elöverföring, energiskatt, elbolagets påslag – inkl. moms om prissensorn har moms.",
+          "trial_days": "Historik från recordern läses in först, så provperioden kan bli klar tidigare."
+        }
+      },
+      "entities": {
+        "title": "Värmepumpens entiteter",
+        "description": "Hittade {found} av {total} entiteter automatiskt via Modbus-register. Kontrollera och fyll i det som saknas.",
+        "data": {
+          "bt6": "BT6 varmvatten laddning",
+          "bt7": "BT7 varmvatten topp",
+          "bt1": "BT1 utetemperatur",
+          "bt50": "BT50 rumsmedel",
+          "hw_mode": "Varmvattenläge (40057)",
+          "offset": "Värmeförskjutning klimatsystem 1 (40031)",
+          "spa": "Smart price adaption (40844)",
+          "hw_start_low": "VV starttemp låg/SMALL (40061)",
+          "hw_stop_low": "VV stopptemp låg/SMALL (40065)",
+          "hw_start_normal": "VV starttemp normal/MEDIUM (40060)",
+          "hw_stop_normal": "VV stopptemp normal/MEDIUM (40064)",
+          "hw_start_high": "VV starttemp hög/LARGE (40059)",
+          "hw_stop_high": "VV stopptemp hög/LARGE (40063)",
+          "e_heat_prod": "Energilogg: producerat värme senaste timmen (32284)",
+          "e_hw_prod": "Energilogg: producerat varmvatten senaste timmen (32286)",
+          "e_heat_used": "Energilogg: förbrukat värme senaste timmen (32292)",
+          "e_hw_used": "Energilogg: förbrukat varmvatten senaste timmen (32294)",
+          "e_heat_add": "Energilogg: elpatron värme senaste timmen (32300)",
+          "e_hw_add": "Energilogg: elpatron varmvatten senaste timmen (32302)"
+        }
+      }
+    },
+    "error": {
+      "price_no_raw": "Sensorn saknar attributet raw_today – använd HACS-integrationen Nordpool.",
+      "missing_required": "BT6, BT1, varmvattenläge och varmvattnets energilogg krävs."
+    },
+    "abort": {
+      "no_nibe": "Hittade ingen Nibe Heat Pump-integration.",
+      "already_configured": "Den här värmepumpen är redan konfigurerad."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Inställningar",
+        "data": {
+          "grid_fee": "Nätavgift och övriga kostnader per kWh",
+          "trial_days": "Provperiod (dagar)",
+          "publish_hour": "Timme då morgondagens priser publiceras",
+          "base_offset": "Grundförskjutning värme",
+          "max_indoor_dev": "Max avvikelse inne (± °C)",
+          "indoor_sensor": "Innetemperaturgivare (valfri, annars BT50)",
+          "indoor_target": "Normal innetemperatur (°C)",
+          "disable_spa": "Stäng av Nibes Smart Price Adaption när värmestyrningen är aktiv"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "trial": {
+        "name": "Provperiod",
+        "state": {
+          "running": "Pågår",
+          "complete": "Klar"
+        }
+      },
+      "hw_decision": {
+        "name": "Varmvattenbeslut"
+      },
+      "heat_decision": {
+        "name": "Beslut värmeförskjutning"
+      },
+      "hw_recommendation": {
+        "name": "Rekommendation varmvatten"
+      },
+      "heat_recommendation": {
+        "name": "Rekommendation värme"
+      },
+      "hot_water_cop": {
+        "name": "Varmvatten-COP"
+      },
+      "heating_cop": {
+        "name": "Värme-COP"
+      }
+    },
+    "select": {
+      "hw_strategy": {
+        "name": "Varmvattenstrategi",
+        "state": {
+          "hw_fixed_medium": "Alltid MEDIUM",
+          "hw_fixed_small": "Alltid SMALL",
+          "hw_fixed_large": "Alltid LARGE",
+          "hw_quartile_50": "Priskvartiler (LARGE ≤ p25, spridning ≥ 0.50)",
+          "hw_absolute_50": "LARGE bara ≤ 0.50 spot",
+          "hw_forecast_50": "Prognos-LARGE (≥ 0.50 sparat)",
+          "hw_forecast_70": "Prognos-LARGE (≥ 0.70 sparat)",
+          "hw_forecast_100": "Prognos-LARGE (≥ 1.00 sparat)",
+          "hw_forecast_70_nosmall": "Prognos-LARGE (≥ 0.70 sparat), utan SMALL",
+          "hw_forecast_70_later": "Prognos-LARGE (≥ 0.70 sparat), mot undviken laddning",
+          "hw_forecast_30": "Prognos-LARGE (≥ 0.30 sparat)",
+          "hw_forecast_40": "Prognos-LARGE (≥ 0.40 sparat)",
+          "hw_forecast_60": "Prognos-LARGE (≥ 0.60 sparat)",
+          "hw_forecast_80": "Prognos-LARGE (≥ 0.80 sparat)",
+          "hw_forecast_120": "Prognos-LARGE (≥ 1.20 sparat)",
+          "hw_forecast_150": "Prognos-LARGE (≥ 1.50 sparat)",
+          "hw_forecast_50_later": "Prognos-LARGE (≥ 0.50 sparat), mot undviken laddning",
+          "hw_forecast_100_later": "Prognos-LARGE (≥ 1.00 sparat), mot undviken laddning",
+          "hw_absolute_30": "LARGE bara ≤ 0.30 spot",
+          "hw_absolute_70": "LARGE bara ≤ 0.70 spot",
+          "hw_quartile_30": "Priskvartiler (LARGE ≤ p25, spridning ≥ 0.30)"
+        }
+      },
+      "heat_strategy": {
+        "name": "Värmestrategi",
+        "state": {
+          "heat_none": "Ingen prisstyrning (grundförskjutning)",
+          "heat_price_1": "Prisförskjutning ±1",
+          "heat_price_2": "Prisförskjutning ±2",
+          "heat_price_3": "Prisförskjutning ±3"
+        }
+      }
+    },
+    "switch": {
+      "hw_active": {
+        "name": "Varmvattenstyrning aktiv"
+      },
+      "heat_active": {
+        "name": "Värmestyrning aktiv"
+      }
+    },
+    "button": {
+      "generate_report": {
+        "name": "Skapa rapport"
+      },
+      "apply_recommendation": {
+        "name": "Använd rekommendationen"
+      },
+      "restart_trial": {
+        "name": "Starta om provperioden"
+      }
+    }
+  },
+  "services": {
+    "generate_report": {
+      "name": "Skapa rapport",
+      "description": "Utvärderar alla strategier och skriver en Markdown-rapport till /config/nibe_price_optimizer/."
+    },
+    "apply_recommendation": {
+      "name": "Använd rekommendationen",
+      "description": "Väljer de rekommenderade strategierna (slår inte på skarp styrning)."
+    },
+    "restart_trial": {
+      "name": "Starta om provperioden",
+      "description": "Rensar insamlad data och startar en ny provperiod."
+    }
+  }
+}

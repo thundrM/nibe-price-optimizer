@@ -1,0 +1,14 @@
+{
+  "domain": "nibe_price_optimizer",
+  "name": "Nibe Price Optimizer",
+  "after_dependencies": ["nibe_heatpump", "nordpool", "recorder"],
+  "codeowners": ["@thundrM"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/thundrM/nibe-price-optimizer",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/thundrM/nibe-price-optimizer/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
