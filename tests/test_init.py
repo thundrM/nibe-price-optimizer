@@ -99,6 +99,9 @@ async def test_evaluation_and_recommendation(hass, tmp_path):
     assert "heat" in rec
     hass.config.config_dir = str(tmp_path)
     path = await opt.async_report(notify=True)
+    # 7 days of data < 14-day trial: a manual report must not mark the trial-end report as done
+    assert not opt.trial_complete
+    assert opt.report_done is False
     text = open(path, encoding="utf-8").read()
     assert "Recommendation" in text or "Rekommendation" in text
     st = hass.states.get("sensor.nibe_price_optimizer_hot_water_recommendation")

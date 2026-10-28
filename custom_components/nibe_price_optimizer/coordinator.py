@@ -431,12 +431,18 @@ class Optimizer(DataUpdateCoordinator[dict]):
         text = build_report(self, lang)
         path = await self.hass.async_add_executor_job(write_report, self.hass.config.path(DOMAIN), text)
         self.last_report = path
-        if notify:
+        # Only the trial-end report counts as "done": a manual report during the trial
+        # must not stop the automatic report and notification when the trial completes.
+        if self.trial_complete:
             self.report_done = True
+        if notify:
             from homeassistant.components import persistent_notification
 
             rec = self.results.get("recommendation", {})
-            title = "Nibe Price Optimizer – " + ("provperioden är klar" if lang == "sv" else "trial complete")
+            if self.trial_complete:
+                title = "Nibe Price Optimizer – " + ("provperioden är klar" if lang == "sv" else "trial complete")
+            else:
+                title = "Nibe Price Optimizer – " + ("rapport (provperioden pågår)" if lang == "sv" else "report (trial in progress)")
             lines = []
             if "hw" in rec:
                 lines.append(("Varmvatten" if lang == "sv" else "Hot water") + f": {rec['hw']['name']} "
