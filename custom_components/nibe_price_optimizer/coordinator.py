@@ -359,29 +359,36 @@ class Optimizer(DataUpdateCoordinator[dict]):
             self.async_set_updated_data(self._snapshot())
 
     # ── evaluation ───────────────────────────────────────────────────────────
-    def _evaluate_sync(self) -> dict:
+    @staticmethod
+    def _evaluate_sync(raw_obs: list[QuarterObs], raw_hours: list[HourObs], raw_prices: dict[datetime, float],
+                       hw_strats: list, heat_strats: list, thr: hw.Thresholds, fee: float,
+                       base_offset: float, max_dev: float) -> dict:
+        """Runs in an executor – only touches the snapshots passed in, never coordinator state."""
         since = dt_util.utcnow() - timedelta(days=EVALUATE_MAX_DAYS)
         obs = [QuarterObs(**{**o.__dict__, "t": dt_util.as_local(o.t),
                              "known_until": dt_util.as_local(o.known_until) if o.known_until else None})
-               for o in self.obs if o.t >= since]
-        hours = [HourObs(**{**h.__dict__, "t": dt_util.as_local(h.t)}) for h in self.hours if h.t >= since]
-        prices = {dt_util.as_local(t): p for t, p in self.prices.items()}
+               for o in raw_obs if o.t >= since]
+        hours = [HourObs(**{**h.__dict__, "t": dt_util.as_local(h.t)}) for h in raw_hours if h.t >= since]
+        prices = {dt_util.as_local(t): p for t, p in raw_prices.items()}
         hw_model = learn_hot_water(obs, hours)
         heat_model = learn_heating(hours)
-        thr = self.thresholds()
-        hw_res = {r.key: r.as_dict() for r in hw.evaluate(list(self.hw_strategies.values()), obs, prices, hw_model, thr, self.fee)}
-        ku = {dt_util.as_local(o.t): dt_util.as_local(o.known_until) for o in self.obs if o.known_until and o.t.minute == 0}
+        hw_res = {r.key: r.as_dict() for r in hw.evaluate(hw_strats, obs, prices, hw_model, thr, fee)}
+        ku = {dt_util.as_local(o.t): dt_util.as_local(o.known_until) for o in raw_obs if o.known_until and o.t.minute == 0}
         heat_res = {}
         if any(h.heat_prod > 0 for h in hours):
-            for s in self.heat_strategies.values():
-                heat_res[s.key] = ht.replay_heating(s, hours, prices, ku, heat_model, self.fee, self.base_offset, self.max_dev).as_dict()
+            for s in heat_strats:
+                heat_res[s.key] = ht.replay_heating(s, hours, prices, ku, heat_model, fee, base_offset, max_dev).as_dict()
         return {"hw_model": hw_model, "heat_model": heat_model, "hw": hw_res, "heat": heat_res, "cop": cop_table(hours)}
 
     async def async_evaluate(self) -> None:
         if len(self.obs) < 96:
             return
         try:
-            out = await self.hass.async_add_executor_job(self._evaluate_sync)
+            # copy on the event loop: _on_quarter keeps appending while the executor iterates
+            out = await self.hass.async_add_executor_job(
+                self._evaluate_sync, list(self.obs), list(self.hours), dict(self.prices),
+                list(self.hw_strategies.values()), list(self.heat_strategies.values()),
+                self.thresholds(), self.fee, self.base_offset, self.max_dev)
         except Exception:  # noqa: BLE001 - never break data collection
             _LOGGER.exception("Evaluation failed")
             return

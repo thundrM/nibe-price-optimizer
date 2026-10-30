@@ -106,3 +106,32 @@ async def test_evaluation_and_recommendation(hass, tmp_path):
     assert "Recommendation" in text or "Rekommendation" in text
     st = hass.states.get("sensor.nibe_price_optimizer_hot_water_recommendation")
     assert st.state not in (None, "unknown")
+
+
+async def test_evaluation_survives_prices_changing_mid_run(hass):
+    from datetime import timedelta
+
+    from homeassistant.util import dt as dt_util
+
+    from .synthetic import make
+
+    entry, _ = await _setup(hass)
+    opt = entry.runtime_data
+    obs, hours, prices = make(2)
+    shift = dt_util.utcnow() - dt_util.as_utc(obs[-1].t)
+    opt.obs = [type(o)(**{**o.__dict__, "t": dt_util.as_utc(o.t) + shift,
+                          "known_until": dt_util.as_utc(o.known_until) + shift}) for o in obs]
+    opt.hours = [type(h)(**{**h.__dict__, "t": dt_util.as_utc(h.t) + shift}) for h in hours]
+    opt.prices = {dt_util.as_utc(t) + shift: p for t, p in prices.items()}
+    real = type(opt)._evaluate_sync
+
+    def mutating(raw_obs, raw_hours, raw_prices, *args):
+        # simulate _on_quarter adding a price while the executor iterates
+        for i, _ in enumerate(raw_prices.items()):
+            if i == 0:
+                opt.prices[dt_util.utcnow() + timedelta(days=30)] = 1.0
+        return real(raw_obs, raw_hours, raw_prices, *args)
+
+    opt._evaluate_sync = mutating
+    await opt.async_evaluate()
+    assert opt.results.get("hw")
